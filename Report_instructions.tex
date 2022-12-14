@@ -1,0 +1,144 @@
+\section{Introduction}
+
+\textit{You should emulate the expositional style of a technical conference paper. You do not need to include a detailed related work section, but be sure to cite and very quickly explain any technical work you referenced in formulating and carrying out your project.}
+
+
+\section{Method}
+\textit{A typical project would take one or more of the methods we have discussed in class or that we are about to cover and apply them to a problem of interest to you. Compare their performance, and analyze how/why they work. A big issue is often ensuring you can get the data you need for this project.}
+
+
+
+\textit{You don’t necessarily have to implement all (or even any) of the algorithms you use. Several tool kits are available with many learning algorithms already implemented. However, running the methods would not contribute to the project if you don’t do any implementation yourself. We expect something much deeper in problem formulation, modeling, or analysis.}
+
+
+\section{Results}
+\textit{The main goals are to make clear what your findings are, why you think they came out the way they did, and why that might be important. Be precise enough to allow someone to replicate your experiments (or verify your proofs).}
+
+
+\textit{If you are going to do an empirical study, consider what method to use as a ”baseline”. It might be running a simple off-the-shelf algorithm or comparing it to what happens if you predict the most common class.}
+
+
+\section{Introduction \& Related Work}
+Imperceptible perturbations to the input $X$ to a Neural Network (NN) can deceive the most accurate models into predicting the incorrect class with high confidence \cite{szegedy2013intriguing}. Two main strategies can be used to defend against such adversarial attacks \cite{DiffPure}. The first is adversarial training which trains NNs on adversarial examples (i.e., samples specifically constructed to decieve a given classifier). However, this method can only defend against the attack types the model was trained to withstand. The alternative technique uses Generative Models (GMs) to purify images by removing the adversarial perturbation before passing the image to the classifier. This method is a more general defense against adversarial attacks and can handle unseen threats. However, due to the shortcomings of GMs, the technique currently performs worse than adversarial training methods. Shortcomings depend on the type of GM used but include mode collapse, low sample quality, and lack of proper randomness \cite{DiffPure}.
+
+Recently, diffusion models have emerged as one of the most powerful GMs, capable of overcoming the mentioned shortcomings \cite{DiffusionPaper}. In this project, we propose that diffusion models can be used for adversarial purification and are a natural fit for this purpose. The rationale is that the diffusion model gradually adds noise to the input in the forward process, perturbing the data. The \textit{a priori} reason this would defend against adversarial attacks is that the adversarial perturbations are disrupted by the added noise and hence cannot disturb the classifier. 
+
+The forward noise process in the DDPM is described by,
+
+\begin{align}
+    q_t\left(x_t \mid x_0\right)=N\left(x_t \mid \sqrt{\bar{\alpha}_t} x_0,\left(1-\bar{\alpha}_t\right) I\right),
+\end{align}
+
+where $\bar{\alpha}_t=\prod_{s=1}^t\left(1-\beta_t\right)$ and $\beta_t$ defines the `noise schedule,' i.e., how much noise is added at each step. Then, in the reverse process, the model aims to take the noisy image and remove the noise to retrieve the original input, thereby learning to recover the input. The reverse process is the joint distribution, $p_\theta\left(\mathbf{x}_{0: T}\right)$, which is defined as a Markov chain with learned transitions starting at $p(x_T)$,
+
+
+\begin{align}
+    p_\theta\left(x_{0: T}\right)=p\left(x_T\right) \prod_{t=1}^T N\left(x_{t-1} \mid \mu_\theta\left(x_t, t\right), \beta_t I\right).
+\end{align}
+
+
+The mean $\mu_\theta\left(x_t, t\right)$ is a neural network parameterized by $\theta$ \cite{DiffusionPaper}. This generative model is found by maximizing the evidence lower bound criterion (ELBO) \cite{DiffusionPaper}. The reverse process is intuitively similar to purification, where a perturbation is removed from an adversarial example. It has been empirically demonstrated that diffusion models can generate high-quality samples \cite{DiffusionPaper}. This ensures that the cleaned image follows the original distribution of the data. Furthermore, reliable attacks against diffusion models are much harder to design as the model is stochastic. These properties are beneficial for adversarial purification.
+
+\emph{DiffPure} uses diffusion models for adversarial purification \cite{DiffPure}. The method first adds a small amount of noise to an adversarial example with the forward diffusion process and then recovers the purified, clean image through the reverse process. The hope is that the perturbations are gradually mixed with noise and that the added Gaussian noise dominates them. The reverse process then removes both the added noise and the perturbations. It has been demonstrated that the method outperforms current adversarial training and adversarial purification methods on three image data sets---CIFAR-10, ImageNet, and CelebA-HQ---with three classifier architectures---ResNet, WideResNet, and ViT \cite{DiffPure}.
+
+\textbf{Contributions:} Our project complements the results in \cite{DiffPure} by applying a purifying diffusion model to the classification of metastatic tissue. In the biomedical sciences, model robustness is paramount, and research into making current methods more reliable in this setting is essential. Furthermore, as \cite{DiffPure} points out, one weakness of the diffusion method is that it requires many inference steps and is slow. Our proposed solution shows strong results using a low noise level of $t^*=0.04$ (40 inference steps), which is smaller than in previous works, leading to faster inference.
+
+
+\section{Data, Models, \& Methods}
+\label{sec:methods}
+
+\textbf{Data sets and network architectures:} We used the PatchCamelyon data set to evaluate our proposed method. The data set contains histopathologic scans of lymph node sections. Each image has a binary label that indicates the presence of metastatic tissue, i.e., cancerous cells \cite{Pocock2022}. The binary classes are perfectly balanced. For the classifier, we consider the widely used \texttt{ResNet} model and specifically use \texttt{ResNet101}, which we refer to as \texttt{ResNet} \cite{ResNet}. In addition, we used TiaToolBox's \texttt{ResNet} model pre-trained on the PCam data. For the robust adversarial training, we experimented with many architectures and found \texttt{GoogLeNet}\cite{szegedy2015going} to be the only one that did not collapse to the naïve solution.
+
+\textbf{Adversarial attacks:}
+We chose to use adaptive attacks designed with full knowledge of the model's defense. The adversarial examples were created by finding the perturbation from the set of allowable perturbations that maximized the loss given by the following equation,
+
+\begin{align}
+    \underset{\delta \in \Delta}{\operatorname{maximize}} \: \ell\left(h_\theta(x+\delta), y\right).
+\end{align}
+
+The maxima were found using project gradient descent. We chose to use the common perturbation set of $\ell_{\infty}$ ball which is defined as $\Delta=\left\{\delta:\|\delta\|_{\infty} \leq \epsilon\right\}$. The restriction of the norm of the perturbation ensures that the perturbed image is indistinguishable from the original image. Thus, it would still be reasonable to expect the correct classification. It was reasoned that the value of $\epsilon$ should be greater than 1 unit of movement away from the original image to ensure that the perturbed image values are not rounded back to the original value. $\epsilon$ was set to be $2/255 = 0.0078$, which was held constant throughout the experiments. At this level, the classifier was consistently fooled, and the imperceptibility of perturbation was maintained. 
+
+\textbf{Proposed method:}
+The proposed method is a diffusion model coupled with a classifier. We used the \texttt{diffusers} library made by Hugging Face \cite{von-platen-etal-2022-diffusers}. The type of diffusion model is a DDPM. The scoring model was a \texttt{U-Net} trained from scratch with a linear noise schedule on \textasciitilde 30k tissue sample images for 15 epochs, taking a couple of hours on a single Colab GPU. We note that there is ample room for improvement in the diffusion purification model regarding the number of epochs, number of samples, data augmentation, hyperparameter tuning, etc. However, we could not optimize these values more during the project due to a lack of computing resources.
+
+\textbf{Baseline models:} We compared our proposed method of adversarial defense to two other defense methods, which provide performance baselines. As a first baseline, we used a simple Gaussian noise procedure followed by the classifier, referred to as \texttt{NoiseDefense}. The noise added is equivalent to the forward process of the diffusion model. In theory, these noisy images should contain enough information for correct classification while having enough noise to distort the precisely constructed adversarial perturbations. If the diffusion model can extract enough information to correctly denoise the image, the classifier could also use this information.
+
+The noise level added to the perturbed images was decided using cross-validation on a subset of the data. We used different $t$ for the forward process $q_t(x_t|x_0)$ and evaluated the classifier's performance on the DDPM de-noised images. We found an optimal performance at $t^*=0.04$. See the next section and \autoref{fig:noise-level}.
+
+As the second baseline, we trained a robust classifier using adversarial examples created during every weight update of the model. Thus, each model update can be viewed as a min-max problem where we first maximize the loss w.r.t input perturbations $x+\delta$ and then minimize the loss w.r.t the model weights.
+
+
+\textbf{Optimal noise level:}
+The noise level is an important metric in determining the performance of the diffusion model in adversarial purification. \autoref{fig:noise-level} shows the accuracy of ResNet101 after noising and denoising adversarial examples with different noise levels $t\in[0, 1]$. There are several noteworthy results in this graph. For one, there seems to be a wide range of time steps that result in similar accuracy. Furthermore, the level of noise that can be added to an image before the performance drops is quite significant. An image at $t=0.10$ looks very noisy to the human eye, yet the diffusion process can recover relevant features such that the classifier can still detect metastatic tissue. With increasing noise, though, there is a drop in performance when exceeding $t=0.20$ and beyond. Lastly, this graph shows that a significant amount of noise must be added to counter the adversarial perturbations effectively. Despite good robust accuracy results for $t=0.10$, we can speed up inference with 60\% by choosing a noise level at the lower end of the optimal range. We, therefore, chose $t^*=0.04$.
+
+
+
+\begin{figure}
+    \includegraphics[width=0.45\textwidth]{Figures/noise_cv.png}
+    \caption{Robust accuracy for different noise levels $t\in[0.001, 0.300]$ for a subset of the validation data.}
+    \label{fig:noise-level}
+\end{figure}
+
+
+\section{Experimental Results}
+
+
+\textbf{Visualization of pipeline model outputs:}
+In \autoref{fig:tissue-img}, an example of the outputs of our pipeline is shown. Image (a) shows the original histopathologic scan of a lymph node with metastatic tissue (correctly classified by classifier). Image (b) shows an adversarial example. Even though there is no discernible difference for the human eye, the \texttt{ResNet} model classifies the upper left image with probability $P(Y=0|X)=0.9997$ of no metastatic tissue present. Image (c) shows the noise added in the \texttt{NoiseDefense} and as preparation for the reverse diffusion process. Image (d) shows the tissue after the diffusion model removed the noise. Note that this process destroyed some details in the image. The white circles show differences between the original image (a) and the purified image (d), which ideally should be identical.
+
+
+\begin{figure}
+    \includegraphics[width=0.45\textwidth]{Figures/images_tissue.png}
+    \caption{An example of a tissue sample in the different stages of the model pipeline.}
+    \label{fig:tissue-img}
+\end{figure}
+
+
+\textbf{Adversarial perturbations:}
+In creating the adversarial examples, we found that all perturbations were on the $L_\infty$ norm ball perimeter, as theory would predict. Using an $L_\infty$ norm ball as a restriction causes all the perturbations to take the maximum allowed step in the direction of the gradient. As the most damage to the classifier can often be done by large changes, the perturbations all lie on the constraint, which is equal to the maximum allowable norm of perturbation.
+
+
+
+\begin{figure}
+    \includegraphics[width=0.45\textwidth]{Figures/result_bar.png}
+    \caption{The results of running our four models on 1000 test samples for both standard accuracy (left) and robust accuracy (right). The vanilla \texttt{ResNet} model is red, and our method is purple. It is also important to note that the robust adversarially trained model is an instance of a \texttt{GoogLeNet}, and not \texttt{ResNet}, as this was the only tested architecture that generalized under adversarial training.}
+    \vspace*{-1mm}
+    \label{fig:results}
+\end{figure}
+
+
+We present the results from our experiments in \autoref{fig:results} and will analyze the different models' performance on the test data in the following paragraphs.
+
+\textbf{Vanilla classifier:}
+To begin with, the pre-trained \texttt{ResNet} model performed at an 87\% accuracy on the normal test data. This will serve as the north star accuracy any adversarially robust method would want to achieve in our context. Next, we observe that adversarial attacks at a $\norm{\epsilon}_\infty\leq\frac{2}{255}$ level are extremely effective and result in an adversarial accuracy of 6\%, which is worse than the 50\% the naïve baseline would achieve (since the data set is balanced). This shows that creating adversarial examples for this data set works with near certainty.
+
+
+\textbf{Noise Defense:}
+The first baseline model, the \texttt{NoiseDefense}, tries to use noise to `wash out' the targeted adversarial attacks. The hope is that there is a level of noise that undermines the targeted attack without undermining the classifier. From the green bars in \autoref{fig:results}, we see that the noise did undermine the adversarialness of the attacks by observing that the robust accuracy increased from 6\% to 58\% with the added noise. However, we also observe that the standard accuracy falls to 66\%, i.e. marginally better than the naïve. This indicates that the added noise removes much of the signal. The perturbations were not sufficiently removed at a lower level of added noise to allow the model to predict better than chance.
+
+
+\textbf{Adversarially trained classifier:}
+The cyan bar in \autoref{fig:results} shows the performance of the adversarially trained robust model. This model performs marginally better than the \texttt{NoiseDefense} model, with a 70\% standard accuracy and 57\% robust accuracy. In the process of training this model, we observed several notable findings. First, there seems to be an inherent trade-off between standard and robust accuracy, as an increase in robust accuracy was always paired with a drop-off in standard accuracy, which is also supported by findings in the literature \cite{raghunathan2020understanding}. This trade-off could also be made sense of in the context of the increased sample complexity that adversarially robust models have \cite{schmidt2018adversarially}. The robust model needs to balance performance on standard and adversarial images while dealing with the sample complexity increased due to the addition of adversarial examples.
+
+
+Third, robust adversarial training is computationally expensive and finicky. Since one is solving one optimization problem for each training step, the process is costly. Furthermore, the models we trained were extremely sensitive to hyperparameter choice and tended to collapse toward the naïve solution if trained for too long. Despite extensive hyperparameter search, the standard accuracy dropped off markedly in our experiments. Out of the seven different architectures we tested, only \texttt{GoogLeNet} did not collapse. Lastly, adversarially robust training is model-specific and assumes a certain attack type. I.e., how you train is also how the model will be made more robust. 
+
+
+\textbf{Diffusion model coupled with classifier:}
+In \autoref{fig:results}, the results of our diffusion approach are shown in purple. The first thing to note is how close the standard accuracy is to the vanilla model, indicating that the diffusion process is successfully recreating images that are faithful to the original (i.e., not losing the essential details that allow the classifier to discriminate the classes). This is an important attribute, as a robust model with low accuracy on non-perturbed data is not likely to be used in practice. Especially for a life-critical application like the detection of metastatic tissue, high performance on non-adversarial examples is crucial.
+
+Furthermore, the adversarial accuracy is also comparably high at 75\% accuracy, vastly better than the baselines and the vanilla model. Again, the diffusion model can accurately purify the images (both added noise and adversarial perturbations) while retaining the crucial details. This ability is not perfect, though, as we did not achieve equal robust accuracy to the standard accuracy. As discussed in \autoref{sec:methods}, the chosen noise level $t^*=0.04$ was used as it provided fast inference and high precision.
+
+In contrast to robust adversarial training, the diffusion defense does not assume any specific attack and can be combined with any model. Though we did not test it in this work, there is reason to believe that the diffusion defense would be effective against perturbations within a differently-sized norm ball, as the diffusion defense was only trained as a standard diffusion model.
+
+
+\textbf{Difficulties in detecting metastatic tissue:}
+The PCam data set classifies images as class \texttt{1} if at least one pixel with cancer is present in the center $32\times 32$ pixel region of the picture. This means that the data set is sensitive to small changes. The difficulty in predicting such small areas of cancer could explain the poor performance of the adversarially robust trained model. The model must be susceptible to minor differences in the images as these small changes indicate metastatic tissue. If we introduce perturbations, the model cannot disregard them, leading to poor performance. If we compare this with a more general classification task like CIFAR-10, we see that this issue does not exist \cite{DiffPure}. In CIFAR-10, a small perturbation is generally not important in distinguishing a cat from an airplane. Therefore robust training can find workarounds for adversarial examples. In our data set, this luxury does not exist, as the sole purpose of this classification task is to find small perturbations. 
+
+
+\section{Conclusion \& Future Work}
+This work showed that diffusion models are effective in adversarial purification. Furthermore, their coupling with a classifier increases the overall robustness of the pipeline to adversarial attacks. Thus potentially setting a new gold standard in adversarial defense. In addition, we observed better results for standard accuracy and robust accuracy than the baseline approaches.
+
+There are several avenues for future research on this topic. For one, we would like to explore whether it is possible to steer the diffusion model during training toward outputting a cleaned image that is easily classified. The classifier and diffusion model would no longer be independently trained but instead trained in conjunction, utilizing shared information to improve the defense. However, by including the classifier in the training of the diffusion model, the defense would no longer be model agnostic.
+
+Secondly, while training the diffusion model, we realized that when the noise exceeded a threshold, the diffusion model outputted an image quite different from the input. We hypothesize that when the noise is too large, the signal is low, and the model cannot correctly rebuild the aspects of the image relevant for classification. Future research could analyze how more training on the diffusion process would enable the defense to diffuse even more noise from the image.  
