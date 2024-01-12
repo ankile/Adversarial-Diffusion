@@ -2,7 +2,7 @@
 
 > Lars Ankile, Anna Midgley, Sebastian Weisshaar, Harvard University, 2022
 
-This repository contains the code to reproduce the experiments and results in the paper. For any questions, reach out to larsankile@g.harvard.edu or open an issue in the repo. Read the final report in the [PDF located in the repo](https://arxiv.org/pdf/2301.06871.pdf).
+This repository contains the code to reproduce the experiments and results in the paper. For any questions, reach out to larsankile@g.harvard.edu or open an issue in the repo. If this seems interesting, please [read the paper](https://arxiv.org/pdf/2301.06871.pdf).
 
 **Abstract**
 
@@ -20,7 +20,7 @@ The results of running our four models on 1000 test samples for both standard ac
 
 **Data**
 
-The data used in this project is the [PatchCamelyon](https://patchcamelyon.grand-challenge.org/) data set, which is a data set of 327,680 96x96 pixel images of lymph node tissue samples. In producing our results, we created many adversarial attacks and ran them through our framework with differing purification levels. All this data is available in this ![Google Drive folder](https://drive.google.com/drive/folders/1EfnbhnjbGE-rhIuBUhB8MmLXR8wK5yGL?usp=sharing).
+The data used in this project is the [PatchCamelyon](https://patchcamelyon.grand-challenge.org/) data set, which is a data set of 327,680 96x96 pixel images of lymph node tissue samples. In producing our results, we created many adversarial attacks and ran them through our framework with differing purification levels. All this data is available in this [Google Drive folder](https://drive.google.com/drive/folders/1EfnbhnjbGE-rhIuBUhB8MmLXR8wK5yGL?usp=sharing).
 
 **Citation**
 
