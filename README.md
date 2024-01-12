@@ -16,7 +16,7 @@ An example of a tissue sample in the different stages of the model pipeline.
 
 The results of running our four models on 1000 test samples for both standard accuracy (left) and robust accuracy (right). The vanilla `ResNet` model is red, and our method is purple. It is also important to note that the robust adversarially trained model is an instance of a `GoogLeNet`, and not `ResNet`, as this was the only tested architecture that generalized under adversarial training.
 
-![Model test set accuracy results](figures/comparison.pdf)
+![Model test set accuracy results](Report_TeX/Figures/result_bar.png)
 
 **Data**
 
